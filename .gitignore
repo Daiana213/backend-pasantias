@@ -7,9 +7,6 @@ package-lock.json
 .env.local
 .env.*.local
 
-# Base de datos local
-db.json
-
 # Logs
 logs
 *.log

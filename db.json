@@ -1,0 +1,51 @@
+{
+  "estudiantes": [],
+  "empresas": [],
+  "notificaciones": [],
+  "ofertas": [],
+  "postulaciones": [],
+  "registrosPendientes": [
+    {
+      "id": "1747341146288",
+      "email": "daipalacios213@gmail.com",
+      "legajo": "12012",
+      "password": "daiana1234",
+      "rol": "estudiante",
+      "estadoValidacion": "pendiente_aprobacion",
+      "fechaRegistro": "2025-05-15T20:32:26.288Z",
+      "emailVerificado": false
+    },
+    {
+      "id": "1747341251392",
+      "email": "daipalacios2005@gmail.com",
+      "legajo": "12012",
+      "password": "daiana1234",
+      "rol": "estudiante",
+      "estadoValidacion": "pendiente_aprobacion",
+      "fechaRegistro": "2025-05-15T20:34:11.394Z",
+      "emailVerificado": false
+    },
+    {
+      "id": "1747342069918",
+      "email": "daianapalacios213@gmail.com",
+      "legajo": "12012",
+      "password": "daiana1234",
+      "rol": "estudiante",
+      "estadoValidacion": "pendiente_aprobacion",
+      "fechaRegistro": "2025-05-15T20:47:49.920Z",
+      "emailVerificado": false,
+      "tokenVerificacion": "3bda04dbcac3ad68113036e985ecacb324b8a2b27db0c421fe36163bcf0a34eb"
+    },
+    {
+      "id": "1747342263519",
+      "email": "daianapalacios213@gmail.com",
+      "legajo": "12012",
+      "password": "daiana1234",
+      "rol": "estudiante",
+      "estadoValidacion": "pendiente_aprobacion",
+      "fechaRegistro": "2025-05-15T20:51:03.520Z",
+      "emailVerificado": true,
+      "tokenVerificacion": "4f4e87a74f17d88ce3f6fd6758f73d6d8e9c8016ae5553cdddc0df598909d46f"
+    }
+  ]
+}
