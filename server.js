@@ -6,331 +6,228 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const app = express();
 
+// Configuración básica
+const CONFIG = {
+  dbPath: path.join(__dirname, 'db.json'),
+  port: process.env.PORT || 3000,
+  email: {
+    user: 'daianapalacios213@gmail.com',
+    pass: 'fjly mbqh gebp cqbc'
+  }
+};
+
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Configuración de rutas y constantes
-const dbPath = path.join(__dirname, 'db.json');
-const PORT = process.env.PORT || 3000;
 
 // Configuración del transporter de nodemailer
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'daianapalacios213@gmail.com',
-    pass: 'fjly mbqh gebp cqbc'
+    user: CONFIG.email.user,
+    pass: CONFIG.email.pass
   }
 });
 
-// Función auxiliar para enviar emails
-const enviarEmail = async (destinatario, asunto, contenido) => {
-  try {
-    await transporter.sendMail({
-      from: 'daianapalacios213@gmail.com',
-      to: destinatario,
-      subject: asunto,
-      html: contenido
-    });
-    return true;
-  } catch (error) {
-    console.error('Error al enviar email:', error);
-    return false;
+// Utilidades
+const utils = {
+  readDB: () => {
+    return JSON.parse(fs.readFileSync(CONFIG.dbPath, 'utf8'));
+  },
+  
+  writeDB: (data) => {
+    fs.writeFileSync(CONFIG.dbPath, JSON.stringify(data, null, 2));
+  },
+  
+  enviarEmail: async (destinatario, asunto, contenido) => {
+    try {
+      await transporter.sendMail({
+        from: CONFIG.email.user,
+        to: destinatario,
+        subject: asunto,
+        html: contenido
+      });
+      return true;
+    } catch (error) {
+      console.error('Error al enviar email:', error);
+      return false;
+    }
   }
 };
 
-// Endpoints de Autenticación
-
-// Registro de estudiante
-app.post('/api/auth/registro-estudiante', async (req, res) => {
-  try {
-    const { email, legajo, password } = req.body;
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    
-    if (dbData.estudiantes.some(e => e.email === email)) {
-      return res.status(400).json({ message: 'Email ya registrado' });
-    }
-
-    const tokenVerificacion = crypto.randomBytes(32).toString('hex');
-    const nuevoEstudiante = {
-      id: Date.now().toString(),
-      email,
-      legajo,
-      password,
-      rol: 'estudiante',
-      estadoValidacion: 'pendiente_aprobacion',
-      fechaRegistro: new Date().toISOString(),
-      emailVerificado: false,
-      tokenVerificacion
-    };
-
-    const urlVerificacion = `http://localhost:5173/verificar-email?token=${tokenVerificacion}`;
-
-    await enviarEmail(
-      email,
-      'Confirmación de registro - Sistema de Pasantías UTN',
-      `
-      <h1>¡Gracias por registrarte!</h1>
-      <p>Tu solicitud de registro ha sido recibida y está siendo procesada.</p>
-      <p>Datos de registro:</p>
-      <ul>
-        <li>Legajo: ${legajo}</li>
-        <li>Email: ${email}</li>
-      </ul>
-      `
-    );
-
-    await enviarEmail(
-      'daianapalacios213@gmail.com',
-      'Nueva solicitud de registro de estudiante',
-      `
-      <h1>Nueva solicitud de registro</h1>
-      <p>Se ha recibido una nueva solicitud de registro:</p>
-      <ul>
-        <li>Legajo: ${legajo}</li>
-        <li>Email: ${email}</li>
-        <li>Fecha: ${new Date().toLocaleString()}</li>
-      </ul>
-      <p>Por favor, verifica tu email haciendo clic en el siguiente enlace:</p>
-      <a href="${urlVerificacion}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Verificar Email</a>
-      <p>Te notificaremos cuando tu cuenta sea aprobada.</p>
-      `
-    );
-
-    dbData.estudiantes = dbData.estudiante || [];
-    dbData.registrosPendientes.push(nuevoEstudiante);
-    fs.writeFileSync(dbPath, JSON.stringify(dbData, null, 2));
-
-    res.status(201).json({ 
-      message: 'Solicitud de registro enviada. Recibirás un email cuando sea aprobada.' 
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Error al procesar el registro' });
-  }
-});
-
-// Endpoint para verificar email
-app.post('/api/auth/verificar-email', async (req, res) => {
-  try {
-    const { token } = req.body;
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    
-    const estudiante = dbData.registrosPendientes.find(e => e.tokenVerificacion === token);
-    
-    if (!estudiante) {
-      return res.status(404).json({ message: 'Token de verificación inválido' });
-    }
-
-    estudiante.emailVerificado = true;
-    fs.writeFileSync(dbPath, JSON.stringify(dbData, null, 2));
-
-    res.json({ message: 'Email verificado exitosamente' });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Error al verificar el email' });
-  }
-});
-
-// Registro de empresa
-app.post('/api/auth/registro-empresa', async (req, res) => {
-  try {
-    const { nombre, correo, personaContacto, telefono, direccion, contraseña } = req.body;
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-
-    if (dbData.empresas.some(e => e.email === correo)) {
-      return res.status(400).json({ error: 'Correo ya registrado' });
-    }
-
-    const nuevaEmpresa = {
-      id: Date.now().toString(),
-      nombre,
-      contacto: personaContacto,
-      email: correo,
-      telefono,
-      direccion,
-      contraseña,
-      rol: 'empresa',
-      estadoValidacion: 'pendiente_aprobacion',
-      fechaRegistro: new Date().toISOString()
-    };
-
-    await enviarEmail(
-      correo,
-      'Confirmación de registro - Sistema de Pasantías UTN',
-      `
-      <h1>¡Gracias por registrar tu empresa!</h1>
-      <p>Tu solicitud de registro ha sido recibida y está siendo procesada.</p>
-      <p>Datos de registro:</p>
-      <ul>
-        <li>Empresa: ${nombre}</li>
-        <li>Email: ${correo}</li>
-      </ul>
-      <p>Te notificaremos cuando tu cuenta sea aprobada.</p>
-      `
-    );
-
-    await enviarEmail(
-      'daianapalacios213@gmail.com',
-      'Nueva solicitud de registro de empresa',
-      `
-      <h1>Nueva solicitud de registro de empresa</h1>
-      <p>Se ha recibido una nueva solicitud de registro:</p>
-      <ul>
-        <li>Empresa: ${nombre}</li>
-        <li>Email: ${correo}</li>
-        <li>Contacto: ${personaContacto}</li>
-        <li>Fecha: ${new Date().toLocaleString()}</li>
-      </ul>
-      `
-    );
-
-    dbData.registrosPendientes = dbData.registrosPendientes || [];
-    dbData.registrosPendientes.push(nuevaEmpresa);
-    fs.writeFileSync(dbPath, JSON.stringify(dbData, null, 2));
-
-    res.status(201).json({ 
-      message: 'Solicitud de registro enviada. Recibirás un email cuando sea aprobada.' 
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Error al registrar empresa' });
-  }
-});
-
-// Aprobación de registros
-app.post('/api/auth/aprobar-registro', async (req, res) => {
-  try {
-    const { userId, aprobar } = req.body;
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    
-    const registroPendiente = dbData.registrosPendientes.find(r => r.id === userId);
-    if (!registroPendiente) {
-      return res.status(404).json({ message: 'Registro no encontrado' });
-    }
-
-    await enviarEmail(
-      registroPendiente.email,
-      `Actualización de tu solicitud de registro - ${aprobar ? 'Aprobada' : 'Rechazada'}`,
-      `
-      <h1>Actualización de tu solicitud</h1>
-      <p>Tu solicitud de registro ha sido ${aprobar ? 'aprobada' : 'rechazada'}.</p>
-      ${aprobar ? '<p>Ya puedes iniciar sesión en el sistema con tus credenciales.</p>' : 
-                 '<p>Si crees que esto es un error, por favor contacta con el administrador.</p>'}
-      `
-    );
-
-    if (aprobar) {
-      if (registroPendiente.rol === 'estudiante') {
-        dbData.estudiantes = dbData.estudiantes || [];
-        dbData.estudiantes.push(registroPendiente);
-      } else {
-        dbData.empresas = dbData.empresas || [];
-        dbData.empresas.push(registroPendiente);
+// Rutas de Autenticación
+const authRoutes = {
+  registroEstudiante: async (req, res) => {
+    try {
+      const { email, legajo, password } = req.body;
+      const dbData = utils.readDB();
+      
+      if (dbData.estudiantes?.some(e => e.email === email)) {
+        return res.status(400).json({ message: 'Email ya registrado' });
       }
+
+      const tokenVerificacion = crypto.randomBytes(32).toString('hex');
+      const nuevoEstudiante = {
+        id: Date.now().toString(),
+        email,
+        legajo,
+        password,
+        rol: 'estudiante',
+        estadoValidacion: false,
+        fechaRegistro: new Date().toISOString(),
+        emailVerificado: false,
+        tokenVerificacion
+      };
+
+      dbData.estudiantes = dbData.estudiantes || [];
+      dbData.estudiantes.push(nuevoEstudiante);
+      
+      const urlVerificacion = `/frontend-pasantias/verificar-email?token=${tokenVerificacion}`;
+
+      await Promise.all([
+        utils.enviarEmail(
+          email,
+          'Registro exitoso - Sistema de Pasantías UTN',
+          `
+          <h1>¡Gracias por registrarte!</h1>
+          <p>Tu solicitud de registro ha sido recibida y está siendo procesada.</p>
+          <p>Datos de registro:</p>
+          <ul>
+            <li>Legajo: ${legajo}</li>
+            <li>Email: ${email}</li>
+          </ul>
+          <p>Te notificaremos cuando tu cuenta sea verificada.</p>
+          `
+        ),
+        utils.enviarEmail(
+          CONFIG.email.user,
+          'Nueva solicitud de registro de estudiante - Verificación pendiente',
+          `
+          <h1>Nueva solicitud de registro</h1>
+          <p>Se ha recibido una nueva solicitud de registro:</p>
+          <ul>
+            <li>Legajo: ${legajo}</li>
+            <li>Email: ${email}</li>
+            <li>Fecha: ${new Date().toLocaleString()}</li>
+          </ul>
+          <p>Por favor, verifica este registro haciendo clic en el siguiente enlace:</p>
+          <a href="${urlVerificacion}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 10px 0;">Verificar Registro</a>
+          `
+        )
+      ]);
+
+      utils.writeDB(dbData);
+      res.status(201).json({ message: 'Registro exitoso. El administrador verificará tu cuenta.' });
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Error al procesar el registro' });
     }
+  },
 
-    dbData.registrosPendientes = dbData.registrosPendientes.filter(r => r.id !== userId);
-    fs.writeFileSync(dbPath, JSON.stringify(dbData, null, 2));
+  verificarEmail: async (req, res) => {
+    try {
+      const { token } = req.body;
+      const dbData = utils.readDB();
+      
+      const estudiante = dbData.estudiantes.find(e => e.tokenVerificacion === token);
+      if (!estudiante) {
+        return res.status(404).json({ message: 'Token de verificación inválido' });
+      }
 
-    res.json({ message: aprobar ? 'Registro aprobado' : 'Registro rechazado' });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Error al procesar la aprobación' });
-  }
-});
-
-// Login de estudiante
-app.post('/api/auth/login-estudiante', (req, res) => {
-  try {
-    const { legajo, password } = req.body;
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    const estudiante = dbData.estudiantes.find(e => e.legajo === legajo && e.password === password);
-
-    if (!estudiante) {
-      return res.status(400).json({ error: 'Credenciales inválidas' });
+      estudiante.emailVerificado = true;
+      estudiante.estadoValidacion = true;
+      
+      await utils.enviarEmail(
+        estudiante.email,
+        'Cuenta Verificada - Sistema de Pasantías UTN',
+        `
+        <h1>¡Tu cuenta ha sido verificada!</h1>
+        <p>Tu cuenta ha sido verificada exitosamente. Ya puedes iniciar sesión en el sistema.</p>
+        `
+      );
+      
+      utils.writeDB(dbData);
+      res.json({ 
+        message: 'Email verificado exitosamente. Ya puedes iniciar sesión.',
+        estadoValidacion: estudiante.estadoValidacion,
+        emailVerificado: estudiante.emailVerificado
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Error al verificar el email' });
     }
+  },
 
-    res.json({ 
-      ok: true, 
-      email: estudiante.email, 
-      nombre: estudiante.nombre || '', 
-      legajo: estudiante.legajo 
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Error al iniciar sesión' });
-  }
-});
+  loginEstudiante: (req, res) => {
+    try {
+      const { legajo, password } = req.body;
+      const dbData = utils.readDB();
+      const estudiante = dbData.estudiantes.find(e => e.legajo === legajo && e.password === password);
 
-// Login de empresa
-app.post('/api/auth/login-empresa', (req, res) => {
-  try {
-    const { correo, contraseña } = req.body;
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    const empresa = dbData.empresas.find(e => e.email === correo && e.contraseña === contraseña);
+      if (!estudiante) {
+        return res.status(400).json({ error: 'Credenciales inválidas' });
+      }
 
-    if (!empresa) {
-      return res.status(400).json({ error: 'Credenciales incorrectas' });
+      res.json({ 
+        ok: true, 
+        email: estudiante.email, 
+        nombre: estudiante.nombre || '', 
+        legajo: estudiante.legajo 
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ error: 'Error al iniciar sesión' });
     }
-
-    res.json({ 
-      ok: true, 
-      nombre: empresa.nombre, 
-      correo: empresa.email 
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Error al iniciar sesión' });
   }
-});
+};
 
-// Endpoints de Datos
+// Rutas de Datos
+const dataRoutes = {
+  getEstudiantes: (req, res) => {
+    try {
+      const dbData = utils.readDB();
+      res.json(dbData.estudiantes || []);
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Error al obtener estudiantes' });
+    }
+  },
 
-// Obtener estudiantes
-app.get('/api/estudiantes', (req, res) => {
-  try {
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    res.json(dbData.estudiantes || []);
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Error al obtener estudiantes' });
+  getNotificaciones: (req, res) => {
+    try {
+      const dbData = utils.readDB();
+      res.json(dbData.notificaciones || []);
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Error al obtener notificaciones' });
+    }
+  },
+
+  getOfertas: (req, res) => {
+    try {
+      const dbData = utils.readDB();
+      res.json(dbData.ofertas || []);
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Error al obtener ofertas' });
+    }
   }
-});
+};
 
-// Obtener notificaciones
-app.get('/api/notificaciones', (req, res) => {
-  try {
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    res.json(dbData.notificaciones || []);
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Error al obtener notificaciones' });
-  }
-});
+// Configuración de rutas
+app.post('/api/auth/registro-estudiante', authRoutes.registroEstudiante);
+app.post('/api/auth/verificar-email', authRoutes.verificarEmail);
+app.post('/api/auth/login-estudiante', authRoutes.loginEstudiante);
 
-// Obtener ofertas
-app.get('/api/ofertas', (req, res) => {
-  try {
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    res.json(dbData.ofertas || []);
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Error al obtener ofertas' });
-  }
-});
+app.get('/api/estudiantes', dataRoutes.getEstudiantes);
+app.get('/api/notificaciones', dataRoutes.getNotificaciones);
+app.get('/api/ofertas', dataRoutes.getOfertas);
 
-// Obtener postulaciones de empresa
-app.get('/api/postulaciones/empresa', (req, res) => {
-  try {
-    const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    res.json(dbData.postulaciones || []);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener postulaciones' });
-  }
-});
+// Agregar las rutas al Express app
+app.post('/auth/registro-empresa', authRoutes.registroEmpresa);
+app.post('/auth/login-empresa', authRoutes.loginEmpresa);
 
 // Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+app.listen(CONFIG.port, () => {
+  console.log(`Servidor corriendo en http://localhost:${CONFIG.port}`);
 });
