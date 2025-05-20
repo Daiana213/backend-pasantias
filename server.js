@@ -39,21 +39,12 @@ const utils = {
   },
   
   writeDB: (data) => {
-    fs.writeFileSync(CONFIG.dbPath, JSON.stringify(data, null, 2));
-  },
-  
-  enviarEmail: async (destinatario, asunto, contenido) => {
     try {
-      await transporter.sendMail({
-        from: CONFIG.email.user,
-        to: destinatario,
-        subject: asunto,
-        html: contenido
-      });
-      return true;
+      fs.writeFileSync(CONFIG.dbPath, JSON.stringify(data, null, 2));
+      console.log('Datos guardados exitosamente:', data);
     } catch (error) {
-      console.error('Error al enviar email:', error);
-      return false;
+      console.error('Error al guardar datos:', error);
+      throw error;
     }
   }
 };
@@ -252,4 +243,14 @@ app.post('/api/auth/login', async (req, res) => {
 // Iniciar servidor
 app.listen(CONFIG.port, () => {
   console.log(`Servidor corriendo en http://localhost:${CONFIG.port}`);
+});
+
+// Ruta temporal para verificar datos (¡Eliminar en producción!)
+app.get('/api/debug/db', (req, res) => {
+  try {
+    const dbData = utils.readDB();
+    res.json(dbData);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al leer la base de datos' });
+  }
 });
