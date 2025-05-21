@@ -99,6 +99,17 @@ app.post('/api/auth/registro-estudiante', async (req, res) => {
         <li>Email: ${email}</li>
         <li>Fecha: ${new Date().toLocaleString()}</li>
       </ul>
+      <div style="margin-top: 20px;">
+        <a href="${API_URL}/verificar-email?token=${nuevoEstudiante.id}" 
+           style="background-color: #1a3c6b; 
+                  color: white; 
+                  padding: 12px 24px; 
+                  text-decoration: none; 
+                  border-radius: 8px; 
+                  display: inline-block;">
+          Verificar Email
+        </a>
+      </div>
       `
     );
 
