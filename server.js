@@ -71,7 +71,7 @@ app.post('/api/auth/registro-estudiante', async (req, res) => {
 
     dbData.estudiantes.push(nuevoEstudiante);
 
-    // Notificar al estudiante
+    /* Notificar al estudiante
     await utils.enviarEmail(
       email,
       'Registro exitoso - Sistema de Pasantías UTN',
@@ -86,7 +86,7 @@ app.post('/api/auth/registro-estudiante', async (req, res) => {
       <p>Te notificaremos cuando tu cuenta sea verificada.</p>
       `
     );
-
+    */
     // Notificar al administrador
     await utils.enviarEmail(
       CONFIG.email.user,
@@ -99,17 +99,23 @@ app.post('/api/auth/registro-estudiante', async (req, res) => {
         <li>Email: ${email}</li>
         <li>Fecha: ${new Date().toLocaleString()}</li>
       </ul>
-      <div style="margin-top: 20px;">
-        <a href="${API_URL}/verificar-email?token=${nuevoEstudiante.id}" 
-           style="background-color: #1a3c6b; 
+      <div style="margin-top: 20px; text-align: center;">
+        <a href="https://frontend-pasantias.onrender.com/verificar-registro/${nuevoEstudiante.id}" 
+           style="background-color: #4CAF50; 
                   color: white; 
                   padding: 12px 24px; 
                   text-decoration: none; 
-                  border-radius: 8px; 
-                  display: inline-block;">
-          Verificar Email
+                  border-radius: 4px; 
+                  display: inline-block;
+                  font-family: Arial, sans-serif;
+                  font-size: 16px;
+                  margin: 10px 0;">
+          Verificar Registro
         </a>
       </div>
+      <p style="color: #666; font-size: 14px; margin-top: 20px;">
+        Haz clic en el botón para verificar este registro de estudiante.
+      </p>
       `
     );
 
