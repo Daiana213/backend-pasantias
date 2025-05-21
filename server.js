@@ -55,9 +55,11 @@ app.post('/api/auth/registro-estudiante', async (req, res) => {
     const { email, legajo, password } = req.body;
     const dbData = utils.readDB();
     
+    /*
     if (dbData.estudiantes?.some(e => e.email === email)) {
       return res.status(400).json({ message: 'Email ya registrado' });
     }
+    */
 
     const nuevoEstudiante = {
       id: Date.now().toString(),
@@ -71,7 +73,7 @@ app.post('/api/auth/registro-estudiante', async (req, res) => {
 
     dbData.estudiantes.push(nuevoEstudiante);
 
-    /* Notificar al estudiante
+    // Notificar al estudiante
     await utils.enviarEmail(
       email,
       'Registro exitoso - Sistema de Pasantías UTN',
@@ -86,7 +88,7 @@ app.post('/api/auth/registro-estudiante', async (req, res) => {
       <p>Te notificaremos cuando tu cuenta sea verificada.</p>
       `
     );
-    */
+
     // Notificar al administrador
     await utils.enviarEmail(
       CONFIG.email.user,
