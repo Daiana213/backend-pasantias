@@ -1,6 +1,29 @@
 {
-  "estudiantes": [],
-  "empresas": [],
+  "estudiantes": [
+    {
+      "id": "1747875629015",
+      "email": "daipalacios2005@gmail.com",
+      "legajo": "12012",
+      "password": "daiana1234",
+      "rol": "estudiante",
+      "estadoValidacion": true,
+      "fechaRegistro": "2025-05-22T01:00:29.016Z"
+    }
+  ],
+  "empresas": [
+    {
+      "id": "1747960063760",
+      "nombre": "Org Name",
+      "correo": "daipalacios@gmail.com",
+      "personaContacto": "Org Person",
+      "telefono": "03562412501",
+      "direccion": "Vélez Sarsfield 785",
+      "contraseña": "daiana1234",
+      "rol": "empresa",
+      "estadoValidacion": true,
+      "fechaRegistro": "2025-05-23T00:27:43.761Z"
+    }
+  ],
   "notificaciones": [],
   "ofertas": [],
   "postulaciones": []
