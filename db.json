@@ -5,9 +5,10 @@
       "email": "daipalacios2005@gmail.com",
       "legajo": "12012",
       "password": "daiana1234",
-      "rol": "estudiante",
+      "role": "estudiante",
       "estadoValidacion": true,
-      "fechaRegistro": "2025-05-22T01:00:29.016Z"
+      "fechaRegistro": "2025-05-22T01:00:29.016Z",
+      "token": "mb9owfuv-1747875629015-estudiante-zkbsnzpzkos"
     }
   ],
   "empresas": [
@@ -19,12 +20,12 @@
       "telefono": "03562412501",
       "direccion": "Vélez Sarsfield 785",
       "contraseña": "daiana1234",
-      "rol": "empresa",
+      "role": "empresa",
       "estadoValidacion": true,
-      "fechaRegistro": "2025-05-23T00:27:43.761Z"
+      "fechaRegistro": "2025-05-23T00:27:43.761Z",
+      "token": "mb9p1aps-1747960063760-empresa-j36qhrbdm6"
     }
   ],
-  "notificaciones": [],
   "ofertas": [],
   "postulaciones": []
 }
