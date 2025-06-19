@@ -8,7 +8,7 @@
       "role": "estudiante",
       "estadoValidacion": true,
       "fechaRegistro": "2025-05-22T01:00:29.016Z",
-      "token": "mb9rbmvq-1747875629015-estudiante-undqbvuuyf"
+      "token": "mc3y7inf-1747875629015-estudiante-o497lw3cuh"
     }
   ],
   "empresas": [
@@ -23,9 +23,52 @@
       "role": "empresa",
       "estadoValidacion": true,
       "fechaRegistro": "2025-05-23T00:27:43.761Z",
-      "token": "mb9rb163-1747960063760-empresa-jpq1ida6wdj"
+      "token": "mc3xjh06-1747960063760-empresa-se4863whe4"
     }
   ],
   "ofertas": [],
-  "postulaciones": []
+  "postulaciones": [],
+  "pasantias": [
+    {
+      "id": "1750370785736",
+      "empresaId": "1747960063760",
+      "titulo": "holaaa",
+      "carreraSugerida": "Ingeniería Industrial",
+      "areaSector": "Administración",
+      "descripcionTareas": "adasdasd",
+      "requisitos": "asdasddasdas",
+      "duracionEstimada": "3 meses",
+      "cargaHorariaSemanal": "20 ",
+      "horarioPropuesto": "Lunes a Viernes de 8 a 12 hs",
+      "tipoJornada": "part-time",
+      "modalidad": "presencial",
+      "fechaInicioEstimada": "2025-06-20",
+      "fechaLimitePostulacion": "2025-07-06",
+      "observacionesAdicionales": "dasdasdasda",
+      "estado": "pendiente_sau",
+      "fechaCreacion": "2025-06-19T22:06:25.737Z",
+      "postulaciones": []
+    },
+    {
+      "id": "1750371522800",
+      "empresaId": "1747960063760",
+      "titulo": "dsadasd",
+      "carreraSugerida": "Ingeniería Electromecánica",
+      "areaSector": "Administración",
+      "descripcionTareas": "fghhjsdhjsdhj",
+      "requisitos": "fdnfdmnfhjfduiiuw",
+      "duracionEstimada": "3 meses",
+      "cargaHorariaSemanal": "20 hs",
+      "horarioPropuesto": "Lunes a Viernes de 8 a 12 hs",
+      "tipoJornada": "flexible",
+      "modalidad": "remoto",
+      "fechaInicioEstimada": "2025-06-26",
+      "fechaLimitePostulacion": "2025-06-29",
+      "observacionesAdicionales": "sdfghjkl",
+      "estado": "oferta",
+      "fechaCreacion": "2025-06-19T22:18:42.800Z",
+      "postulaciones": [],
+      "fechaAprobacion": "2025-06-19T22:21:16.417Z"
+    }
+  ]
 }

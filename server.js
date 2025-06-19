@@ -9,7 +9,10 @@ const app = express();
 
 // Configuración básica
 const CONFIG = {
-  port: process.env.PORT || 3000
+  port: process.env.PORT || 3000,
+  email: {
+    user: 'admin@pasantias-utn.com' // Email del administrador para recibir notificaciones
+  }
 };
 
 const API_URL = 'http://localhost:3000';
@@ -325,7 +328,7 @@ app.post('/api/pasantias', authenticate(['empresa']), async (req, res) => {
       <h1>Nueva oferta de pasantía para revisar</h1>
       <p>Se ha recibido una nueva oferta de pasantía:</p>
       <ul>
-        <li>Empresa: ${req.empresa.nombre}</li>
+        <li>Empresa: ${req.empresa.nombre || req.empresa.correo || 'Empresa'}</li>
         <li>Título: ${titulo}</li>
         <li>Carrera: ${carreraSugerida}</li>
         <li>Área: ${areaSector}</li>
@@ -374,41 +377,18 @@ app.get('/api/pasantias', async (req, res) => {
   }
 });
 
-app.get('/api/postulaciones/empresa', authenticate(['empresa']), (req, res) => {
+// Obtener todas las pasantías de la empresa autenticada
+app.get('/api/pasantias/empresa', authenticate(['empresa']), (req, res) => {
   try {
     const dbData = readDB();
-    
-    // Obtener todas las pasantías de la empresa
     const pasantiasEmpresa = dbData.pasantias ? dbData.pasantias.filter(p => p.empresaId === req.empresa.id) : [];
-    
-    // Extraer las postulaciones de cada pasantía
-    const postulaciones = [];
-    pasantiasEmpresa.forEach(pasantia => {
-      if (pasantia.postulaciones && pasantia.postulaciones.length > 0) {
-        pasantia.postulaciones.forEach(postulacion => {
-          // Buscar información del estudiante
-          const estudiante = dbData.estudiantes.find(e => e.id === postulacion.estudianteId);
-          if (estudiante) {
-            postulaciones.push({
-              id: `${pasantia.id}-${postulacion.estudianteId}`,
-              pasantiaId: pasantia.id,
-              pasantiaTitulo: pasantia.titulo,
-              estudianteId: postulacion.estudianteId,
-              estudianteNombre: estudiante.nombre || estudiante.email,
-              fecha: postulacion.fecha,
-              estado: postulacion.estado
-            });
-          }
-        });
-      }
-    });
-    
-    res.json(postulaciones);
+    res.json(pasantiasEmpresa);
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ message: 'Error al obtener las postulaciones' });
+    res.status(500).json({ message: 'Error al obtener las pasantías de la empresa' });
   }
 });
+
 // Middleware de autenticación para estudiantes
 const autenticarEstudiante = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -562,123 +542,6 @@ app.get('/api/notificaciones', (req, res) => {
   }
 });
 
-// Remove the entire notifications endpoint (lines 532-565)
-app.get('/api/postulaciones/empresa', (req, res) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'No autorizado' });
-    }
-
-    const dbData = utils.readDB();
-    // Aquí deberías implementar la lógica para obtener las postulaciones
-    // específicas de la empresa basándote en su ID o información del token
-    
-    // Por ahora, devolvemos un array vacío como ejemplo
-    res.json([]);
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Error al obtener las postulaciones' });
-  }
-});
-
-
-// Postularse a una pasantía
-app.post('/api/postulaciones', autenticarEstudiante, async (req, res) => {
-  try {
-    const { pasantiaId } = req.body;
-    const estudianteId = req.estudiante.id;
-
-    const dbData = readDB();
-    if (!dbData.postulaciones) {
-      dbData.postulaciones = [];
-    }
-
-    const pasantiaIndex = dbData.pasantias.findIndex(p => p.id === pasantiaId);
-
-    if (pasantiaIndex === -1) {
-      return res.status(404).json({ message: 'Pasantía no encontrada' });
-    }
-
-    const pasantia = dbData.pasantias[pasantiaIndex];
-    
-    // Verificar si ya está postulado
-    if (pasantia.postulaciones.some(p => p.estudianteId === estudianteId)) {
-      return res.status(400).json({ message: 'Ya te has postulado a esta pasantía' });
-    }
-
-    // Agregar postulación
-    pasantia.postulaciones.push({
-      estudianteId,
-      fecha: new Date().toISOString(),
-      estado: 'pendiente'
-    });
-
-    dbData.pasantias[pasantiaIndex] = pasantia;
-    writeDB(dbData);
-
-    res.status(201).json({ message: 'Postulación exitosa' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al procesar la postulación' });
-  }
-});
-
-// Aceptar una postulación
-app.post('/api/pasantias/:pasantiaId/postulaciones/:estudianteId/aceptar', authenticate(['empresa']), async (req, res) => {
-  try {
-    const { pasantiaId, estudianteId } = req.params;
-    const dbData = readDB();
-    
-    const pasantiaIndex = dbData.pasantias.findIndex(p => p.id === pasantiaId && p.empresaId === req.empresa.id);
-    
-    if (pasantiaIndex === -1) {
-      return res.status(404).json({ message: 'Pasantía no encontrada' });
-    }
-
-    const pasantia = dbData.pasantias[pasantiaIndex];
-    const postulacion = pasantia.postulaciones.find(p => p.estudianteId === estudianteId);
-
-    if (!postulacion) {
-      return res.status(404).json({ message: 'Postulación no encontrada' });
-    }
-
-    // Actualizar estado de la postulación y la pasantía
-    postulacion.estado = 'aceptada';
-    pasantia.estado = 'en_proceso';
-    pasantia.estudianteSeleccionado = estudianteId;
-    pasantia.fechaInicio = new Date().toISOString();
-
-    // Rechazar otras postulaciones
-    pasantia.postulaciones.forEach(p => {
-      if (p.estudianteId !== estudianteId) {
-        p.estado = 'rechazada';
-      }
-    });
-
-    dbData.pasantias[pasantiaIndex] = pasantia;
-    writeDB(dbData);
-
-    // Notificar al estudiante
-    const estudiante = dbData.estudiantes.find(e => e.id === estudianteId);
-    if (estudiante) {
-      await enviarEmail(
-        estudiante.email,
-        'Tu postulación ha sido aceptada - Sistema de Pasantías UTN',
-        `
-        <h1>¡Felicitaciones!</h1>
-        <p>Tu postulación para la pasantía "${pasantia.titulo}" ha sido aceptada.</p>
-        <p>Por favor, contacta a la empresa para coordinar los siguientes pasos.</p>
-        `
-      );
-    }
-
-    res.json({ message: 'Postulación aceptada exitosamente', pasantia });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ message: 'Error al procesar la aceptación de la postulación' });
-  }
-});
-
 // Iniciar servidor
 app.listen(CONFIG.port, () => {
   console.log(`Servidor corriendo en http://localhost:${CONFIG.port}`);
@@ -694,23 +557,21 @@ app.get('/api/debug/db', (req, res) => {
   }
 });
 
-// Aprobar oferta de pasantía
-app.post('/api/pasantias/:id/aprobar', authenticate(['sau']), async (req, res) => {
+// Ruta GET para aprobar pasantías desde el enlace de correo
+app.get('/api/pasantias/:id/aprobar', async (req, res) => {
   try {
     const { id } = req.params;
-    const { comentarios } = req.body;
     const dbData = readDB();
     
     const pasantiaIndex = dbData.pasantias.findIndex(p => p.id === id);
     if (pasantiaIndex === -1) {
-      return res.status(404).json({ message: 'Oferta de pasantía no encontrada' });
+      return res.status(404).send('<h1>Error: Oferta de pasantía no encontrada</h1>');
     }
 
     const pasantia = dbData.pasantias[pasantiaIndex];
     pasantia.estado = 'oferta';
     pasantia.fechaAprobacion = new Date().toISOString();
-    pasantia.comentariosSAU = comentarios;
-
+    
     // Notificar a la empresa
     const empresa = dbData.empresas.find(e => e.id === pasantia.empresaId);
     if (empresa) {
@@ -720,7 +581,6 @@ app.post('/api/pasantias/:id/aprobar', authenticate(['sau']), async (req, res) =
         `
         <h1>¡Tu oferta de pasantía ha sido aprobada!</h1>
         <p>La oferta "${pasantia.titulo}" ha sido revisada y aprobada por el SAU.</p>
-        ${comentarios ? `<p>Comentarios: ${comentarios}</p>` : ''}
         <p>La oferta ya está publicada y visible para los estudiantes.</p>
         `
       );
@@ -729,13 +589,29 @@ app.post('/api/pasantias/:id/aprobar', authenticate(['sau']), async (req, res) =
     dbData.pasantias[pasantiaIndex] = pasantia;
     writeDB(dbData);
 
-    res.json({
-      message: 'Oferta de pasantía aprobada exitosamente',
-      pasantia
-    });
+    // Responder con una página HTML de confirmación
+    res.send(`
+      <html>
+        <head>
+          <title>Pasantía Aprobada</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+            .success { color: #4CAF50; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1 class="success">¡Pasantía Aprobada Exitosamente!</h1>
+            <p>La oferta de pasantía "${pasantia.titulo}" ha sido aprobada y ahora está visible para los estudiantes.</p>
+            <p>Puede cerrar esta ventana.</p>
+          </div>
+        </body>
+      </html>
+    `);
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ message: 'Error al aprobar la oferta de pasantía' });
+    res.status(500).send('<h1>Error al aprobar la oferta de pasantía</h1>');
   }
 });
 
