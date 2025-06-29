@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -11,14 +12,18 @@ const app = express();
 const CONFIG = {
   port: process.env.PORT || 3000,
   email: {
-    user: 'admin@pasantias-utn.com' // Email del administrador para recibir notificaciones
+    user: process.env.EMAIL_USER
   }
 };
 
-const API_URL = 'http://localhost:3000';
+const API_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Rutas de Autenticación
