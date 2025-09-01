@@ -5,11 +5,6 @@ class NotificacionesController {
   // Obtener notificaciones de un usuario
   static async obtenerNotificaciones(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({ message: 'No autorizado' });
-      }
-
       const dbData = readDB();
       
       // Asegurarse de que existe la colección de notificaciones
@@ -17,19 +12,14 @@ class NotificacionesController {
         dbData.notificaciones = [];
       }
 
-      // Buscar el usuario (empresa o estudiante) por el token
-      const empresa = dbData.empresas.find(e => e.token === token);
-      const estudiante = dbData.estudiantes.find(e => e.token === token);
-      const usuario = empresa || estudiante;
-
-      if (!usuario) {
-        return res.status(401).json({ message: 'Usuario no encontrado' });
-      }
+      // Usuario autenticado por middleware
+      const usuarioId = req.user.id;
+      const tipo = req.role; // 'empresa' o 'estudiante'
 
       // Filtrar notificaciones para el usuario específico
       const notificacionesUsuario = dbData.notificaciones.filter(n => 
-        n.usuarioId === usuario.id && 
-        n.tipo === (empresa ? 'empresa' : 'estudiante')
+        n.usuarioId === usuarioId && 
+        n.tipo === tipo
       );
 
       // Ordenar por fecha (más recientes primero)
@@ -46,28 +36,15 @@ class NotificacionesController {
   static async marcarComoLeida(req, res) {
     try {
       const { id } = req.params;
-      const token = req.headers.authorization?.split(' ')[1];
-
-      if (!token) {
-        return res.status(401).json({ message: 'No autorizado' });
-      }
-
       const dbData = readDB();
-      
-      // Buscar el usuario
-      const empresa = dbData.empresas.find(e => e.token === token);
-      const estudiante = dbData.estudiantes.find(e => e.token === token);
-      const usuario = empresa || estudiante;
-
-      if (!usuario) {
-        return res.status(401).json({ message: 'Usuario no encontrado' });
-      }
+      const usuarioId = req.user.id;
+      const tipo = req.role;
 
       // Buscar y actualizar la notificación
       const notificacionIndex = dbData.notificaciones.findIndex(n => 
         n.id === id && 
-        n.usuarioId === usuario.id && 
-        n.tipo === (empresa ? 'empresa' : 'estudiante')
+        n.usuarioId === usuarioId && 
+        n.tipo === tipo
       );
 
       if (notificacionIndex === -1) {
@@ -87,28 +64,15 @@ class NotificacionesController {
   // Marcar todas las notificaciones como leídas
   static async marcarTodasComoLeidas(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-
-      if (!token) {
-        return res.status(401).json({ message: 'No autorizado' });
-      }
-
       const dbData = readDB();
-      
-      // Buscar el usuario
-      const empresa = dbData.empresas.find(e => e.token === token);
-      const estudiante = dbData.estudiantes.find(e => e.token === token);
-      const usuario = empresa || estudiante;
-
-      if (!usuario) {
-        return res.status(401).json({ message: 'Usuario no encontrado' });
-      }
+      const usuarioId = req.user.id;
+      const tipo = req.role;
 
       // Marcar todas las notificaciones del usuario como leídas
       let notificacionesActualizadas = 0;
       dbData.notificaciones.forEach(notificacion => {
-        if (notificacion.usuarioId === usuario.id && 
-            notificacion.tipo === (empresa ? 'empresa' : 'estudiante') && 
+        if (notificacion.usuarioId === usuarioId && 
+            notificacion.tipo === tipo && 
             !notificacion.leida) {
           notificacion.leida = true;
           notificacionesActualizadas++;
@@ -130,28 +94,15 @@ class NotificacionesController {
   static async eliminarNotificacion(req, res) {
     try {
       const { id } = req.params;
-      const token = req.headers.authorization?.split(' ')[1];
-
-      if (!token) {
-        return res.status(401).json({ message: 'No autorizado' });
-      }
-
       const dbData = readDB();
-      
-      // Buscar el usuario
-      const empresa = dbData.empresas.find(e => e.token === token);
-      const estudiante = dbData.estudiantes.find(e => e.token === token);
-      const usuario = empresa || estudiante;
-
-      if (!usuario) {
-        return res.status(401).json({ message: 'Usuario no encontrado' });
-      }
+      const usuarioId = req.user.id;
+      const tipo = req.role;
 
       // Buscar y eliminar la notificación
       const notificacionIndex = dbData.notificaciones.findIndex(n => 
         n.id === id && 
-        n.usuarioId === usuario.id && 
-        n.tipo === (empresa ? 'empresa' : 'estudiante')
+        n.usuarioId === usuarioId && 
+        n.tipo === tipo
       );
 
       if (notificacionIndex === -1) {
@@ -171,27 +122,15 @@ class NotificacionesController {
   // Obtener conteo de notificaciones no leídas
   static async obtenerConteoNoLeidas(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({ message: 'No autorizado' });
-      }
-
       const dbData = readDB();
-      
-      // Buscar el usuario
-      const empresa = dbData.empresas.find(e => e.token === token);
-      const estudiante = dbData.estudiantes.find(e => e.token === token);
-      const usuario = empresa || estudiante;
-
-      if (!usuario) {
-        return res.status(401).json({ message: 'Usuario no encontrado' });
-      }
+      const usuarioId = req.user.id;
+      const tipo = req.role;
 
       // Contar notificaciones no leídas
       const conteoNoLeidas = dbData.notificaciones ? 
         dbData.notificaciones.filter(n => 
-          n.usuarioId === usuario.id && 
-          n.tipo === (empresa ? 'empresa' : 'estudiante') && 
+          n.usuarioId === usuarioId && 
+          n.tipo === tipo && 
           !n.leida
         ).length : 0;
 

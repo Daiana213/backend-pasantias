@@ -1,9 +1,23 @@
 const nodemailer = require('nodemailer');
+const validator = require('validator');
+const createDOMPurify = require('dompurify');
+const { JSDOM } = require('jsdom');
+
+// Configurar DOMPurify para server-side
+const window = new JSDOM('').window;
+const DOMPurify = createDOMPurify(window);
+
+// SEGURIDAD: Variables de entorno son obligatorias - sin fallbacks inseguros
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  console.error('🚨 FATAL: EMAIL_USER y EMAIL_PASS deben estar configurados en variables de entorno');
+  console.error('Configure las variables antes de iniciar el servidor.');
+  process.exit(1);
+}
 
 const CONFIG = {
   email: {
-    user: process.env.EMAIL_USER || 'daianapalacios213@gmail.com',
-    pass: process.env.EMAIL_PASS || 'hmev gicf rjge mozn'
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 };
 
@@ -17,8 +31,79 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+/**
+ * Clase para sanitización segura de datos en emails
+ */
+class EmailSecurity {
+  /**
+   * Sanitiza texto para uso seguro en templates de email
+   */
+  static sanitizeForEmail(input) {
+    if (typeof input !== 'string') return '';
+    
+    // 1. Escapar HTML para prevenir inyección
+    let sanitized = validator.escape(input);
+    
+    // 2. Limpiar con DOMPurify (solo texto, sin tags)
+    sanitized = DOMPurify.sanitize(sanitized, {
+      ALLOWED_TAGS: [],
+      ALLOWED_ATTR: []
+    });
+    
+    // 3. Limitar longitud para prevenir overflow
+    sanitized = sanitized.substring(0, 500);
+    
+    // 4. Remover caracteres de control
+    sanitized = sanitized.replace(/[\x00-\x1F\x7F]/g, '');
+    
+    return sanitized.trim();
+  }
+
+  /**
+   * Sanitiza múltiples campos de datos
+   */
+  static sanitizeEmailData(data) {
+    if (!data || typeof data !== 'object') return {};
+    
+    const sanitized = {};
+    for (const [key, value] of Object.entries(data)) {
+      sanitized[key] = this.sanitizeForEmail(value);
+    }
+    return sanitized;
+  }
+
+  /**
+   * Valida que un email sea seguro antes de enviarlo
+   */
+  static validateEmailContent(content) {
+    // Verificar que no hay scripts o contenido peligroso
+    const dangerousPatterns = [
+      /<script[^>]*>/i,
+      /javascript:/i,
+      /on\w+\s*=/i,
+      /<iframe[^>]*>/i,
+      /<object[^>]*>/i,
+      /<embed[^>]*>/i
+    ];
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(content)) {
+        throw new Error('Contenido de email contiene elementos peligrosos');
+      }
+    }
+
+    return true;
+  }
+}
+
 // Template base para emails
 const getEmailTemplate = (titulo, contenido) => {
+  // Sanitizar título
+  const safeTitulo = EmailSecurity.sanitizeForEmail(titulo);
+  
+  // Validar contenido antes de usar
+  EmailSecurity.validateEmailContent(contenido);
+  
   return `
     <!DOCTYPE html>
     <html>
@@ -99,13 +184,17 @@ const enviarEmailConPlantilla = async (destinatario, asunto, nombrePlantilla, da
 const emailTemplates = {
   // Email de bienvenida para estudiante registrado
   estudianteRegistrado: (email, legajo) => {
+    // Sanitizar datos de entrada
+    const safeEmail = EmailSecurity.sanitizeForEmail(email);
+    const safeLegajo = EmailSecurity.sanitizeForEmail(legajo);
+    
     const contenido = `
       <h2>¡Gracias por registrarte!</h2>
       <p>Tu solicitud de registro ha sido recibida y está siendo procesada.</p>
       <p><strong>Datos de registro:</strong></p>
       <ul>
-        <li>Legajo: ${legajo}</li>
-        <li>Email: ${email}</li>
+        <li>Legajo: ${safeLegajo}</li>
+        <li>Email: ${safeEmail}</li>
       </ul>
       <p>Recibirás una confirmación cuando tu cuenta sea activada.</p>
     `;
@@ -114,16 +203,21 @@ const emailTemplates = {
 
   // Email de notificación al admin para nuevo estudiante
   nuevoEstudiante: (email, legajo, estudianteId) => {
+    // Sanitizar datos de entrada
+    const safeEmail = EmailSecurity.sanitizeForEmail(email);
+    const safeLegajo = EmailSecurity.sanitizeForEmail(legajo);
+    const safeEstudianteId = EmailSecurity.sanitizeForEmail(estudianteId);
+    
     const contenido = `
       <h2>Nueva solicitud de registro de estudiante</h2>
       <p>Se ha recibido una nueva solicitud de registro:</p>
       <ul>
-        <li>Legajo: ${legajo}</li>
-        <li>Email: ${email}</li>
+        <li>Legajo: ${safeLegajo}</li>
+        <li>Email: ${safeEmail}</li>
         <li>Fecha: ${new Date().toLocaleString()}</li>
       </ul>
       <div style="text-align: center; margin: 20px 0;">
-        <a href="${API_URL}/api/auth/aprobar-registro/${estudianteId}?tipo=estudiante&aprobar=true" 
+        <a href="${API_URL}/api/auth/aprobar-registro/${safeEstudianteId}?tipo=estudiante&aprobar=true" 
            class="btn btn-success">Aprobar Registro</a>
       </div>
     `;
@@ -132,13 +226,17 @@ const emailTemplates = {
 
   // Email de bienvenida para empresa registrada
   empresaRegistrada: (nombre, correo) => {
+    // Sanitizar datos de entrada
+    const safeNombre = EmailSecurity.sanitizeForEmail(nombre);
+    const safeCorreo = EmailSecurity.sanitizeForEmail(correo);
+    
     const contenido = `
       <h2>¡Gracias por registrar tu empresa!</h2>
       <p>Tu solicitud de registro ha sido recibida y está siendo procesada.</p>
       <p><strong>Datos de registro:</strong></p>
       <ul>
-        <li>Empresa: ${nombre}</li>
-        <li>Email: ${correo}</li>
+        <li>Empresa: ${safeNombre}</li>
+        <li>Email: ${safeCorreo}</li>
       </ul>
       <p>Recibirás una confirmación cuando tu cuenta sea activada.</p>
     `;
@@ -147,17 +245,23 @@ const emailTemplates = {
 
   // Email de notificación al admin para nueva empresa
   nuevaEmpresa: (nombre, correo, personaContacto, empresaId) => {
+    // Sanitizar datos de entrada
+    const safeNombre = EmailSecurity.sanitizeForEmail(nombre);
+    const safeCorreo = EmailSecurity.sanitizeForEmail(correo);
+    const safePersonaContacto = EmailSecurity.sanitizeForEmail(personaContacto);
+    const safeEmpresaId = EmailSecurity.sanitizeForEmail(empresaId);
+    
     const contenido = `
       <h2>Nueva solicitud de registro de empresa</h2>
       <p>Se ha recibido una nueva solicitud de registro:</p>
       <ul>
-        <li>Empresa: ${nombre}</li>
-        <li>Email: ${correo}</li>
-        <li>Contacto: ${personaContacto}</li>
+        <li>Empresa: ${safeNombre}</li>
+        <li>Email: ${safeCorreo}</li>
+        <li>Contacto: ${safePersonaContacto}</li>
         <li>Fecha: ${new Date().toLocaleString()}</li>
       </ul>
       <div style="text-align: center; margin: 20px 0;">
-        <a href="${API_URL}/api/auth/aprobar-registro/${empresaId}?tipo=empresa&aprobar=true" 
+        <a href="${API_URL}/api/auth/aprobar-registro/${safeEmpresaId}?tipo=empresa&aprobar=true" 
            class="btn btn-success">Aprobar Registro</a>
       </div>
     `;

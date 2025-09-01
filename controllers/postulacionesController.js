@@ -225,7 +225,13 @@ class PostulacionesController {
                 id: pasantia.id,
                 titulo: pasantia.titulo,
                 empresa: empresa ? empresa.nombre : 'Empresa no encontrada',
-                estado: pasantia.estado
+                estado: pasantia.estado,
+                carreraSugerida: pasantia.carreraSugerida,
+                modalidad: pasantia.modalidad,
+                duracionEstimada: pasantia.duracionEstimada,
+                areaSector: pasantia.areaSector,
+                descripcionTareas: pasantia.descripcionTareas,
+                fechaLimitePostulacion: pasantia.fechaLimitePostulacion
               }
             });
           }
@@ -256,10 +262,14 @@ class PostulacionesController {
               const estudiante = dbData.estudiantes.find(e => e.id === postulacion.estudianteId);
               return {
                 ...postulacion,
+                pasantiaTitulo: pasantia.titulo,
+                estudianteNombre: estudiante ? `${estudiante.nombre || ''} ${estudiante.apellido || ''}`.trim() || estudiante.email : 'Estudiante no encontrado',
                 estudiante: estudiante ? {
                   id: estudiante.id,
                   email: estudiante.email,
-                  legajo: estudiante.legajo
+                  legajo: estudiante.legajo,
+                  nombre: estudiante.nombre,
+                  apellido: estudiante.apellido
                 } : null
               };
             });
@@ -275,6 +285,40 @@ class PostulacionesController {
       }
 
       res.json(pasantiasConPostulaciones);
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Error al obtener las postulaciones' });
+    }
+  }
+
+  // Obtener postulaciones resumidas para dashboard de empresa
+  static async obtenerPostulacionesResumen(req, res) {
+    try {
+      const empresaId = req.user.id;
+      const dbData = readDB();
+      
+      const postulacionesResumen = [];
+      
+      if (dbData.pasantias) {
+        const pasantiasEmpresa = dbData.pasantias.filter(p => p.empresaId === empresaId);
+        
+        pasantiasEmpresa.forEach(pasantia => {
+          if (pasantia.postulaciones && pasantia.postulaciones.length > 0) {
+            pasantia.postulaciones.forEach(postulacion => {
+              const estudiante = dbData.estudiantes.find(e => e.id === postulacion.estudianteId);
+              postulacionesResumen.push({
+                id: `${pasantia.id}-${postulacion.estudianteId}`,
+                pasantiaTitulo: pasantia.titulo,
+                estudianteNombre: estudiante ? `${estudiante.nombre || ''} ${estudiante.apellido || ''}`.trim() || estudiante.email : 'Estudiante no encontrado',
+                estado: postulacion.estado,
+                fecha: postulacion.fecha
+              });
+            });
+          }
+        });
+      }
+
+      res.json(postulacionesResumen);
     } catch (error) {
       console.error('Error:', error);
       res.status(500).json({ message: 'Error al obtener las postulaciones' });

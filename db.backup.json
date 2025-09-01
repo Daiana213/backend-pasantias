@@ -4,10 +4,11 @@
       "id": "1747875629015",
       "email": "daipalacios2005@gmail.com",
       "legajo": "12012",
-      "password": "$2b$12$WWJRg8qLSKIwA807Qy7lk.Q0zuGW9hrGeY7NtOAsvhx3s8YryRhvy",
+      "password": "daiana1234",
       "role": "estudiante",
       "estadoValidacion": true,
       "fechaRegistro": "2025-05-22T01:00:29.016Z",
+      "token": "meragf8r-1747875629015-estudiante-jrsw4w2vd6m",
       "nombre": "Daiana",
       "apellido": "Palacios",
       "telefono": "03562412501",
@@ -20,7 +21,7 @@
       "linkedin": "",
       "github": "",
       "cv_url": "",
-      "fechaActualizacion": "2025-09-01T21:43:01.894Z"
+      "fechaActualizacion": "2025-08-25T15:25:28.586Z"
     }
   ],
   "empresas": [
@@ -31,15 +32,11 @@
       "personaContacto": "Org Person",
       "telefono": "03562412501",
       "direccion": "Vélez Sarsfield 785",
-      "contraseña": "$2b$12$Xur4AmTANHz8c5UcnJPkoeYpsRfW3e5GHY3YvPk/IQf43LnCELq16",
+      "contraseña": "daiana1234",
       "role": "empresa",
       "estadoValidacion": true,
       "fechaRegistro": "2025-05-23T00:27:43.761Z",
-      "descripcion": "",
-      "sitioWeb": "",
-      "sector": "",
-      "tamaño": "Mediana (51-200)",
-      "fechaActualizacion": "2025-09-01T21:59:04.380Z"
+      "token": "mer9xvzi-1747960063760-empresa-3gd1wvi6f1"
     }
   ],
   "ofertas": [],
@@ -66,10 +63,8 @@
       "postulaciones": [
         {
           "estudianteId": "1747875629015",
-          "fecha": "2025-09-01T21:41:26.077Z",
-          "estado": "rechazada",
-          "motivoRechazo": "hfjffkfkkkfifir",
-          "fechaRechazo": "2025-09-01T21:58:16.917Z"
+          "fecha": "2025-08-25T15:15:36.631Z",
+          "estado": "pendiente"
         }
       ]
     },
@@ -95,7 +90,7 @@
     },
     {
       "id": "1750370785744",
-      "empresaId": "1747960063760",
+      "empresaId": "1747960063768",
       "titulo": "Asistente de laboratorio de química aplicada",
       "carreraSugerida": "Ingeniería Química",
       "areaSector": "Química / Laboratorio",
@@ -115,7 +110,7 @@
     },
     {
       "id": "1750370785745",
-      "empresaId": "1747960063760",
+      "empresaId": "1747960063769",
       "titulo": "Implementación de circuitos electrónicos",
       "carreraSugerida": "Ingeniería Electrónica",
       "areaSector": "Electrónica / Diseño",
@@ -135,7 +130,7 @@
     },
     {
       "id": "1750370785746",
-      "empresaId": "1747960063760",
+      "empresaId": "1747960063770",
       "titulo": "Programador junior - módulo de facturación",
       "carreraSugerida": "Tecnicatura Universitaria en Programación",
       "areaSector": "Software / Sistemas",
@@ -155,7 +150,7 @@
     },
     {
       "id": "1750370785747",
-      "empresaId": "1747960063760",
+      "empresaId": "1747960063771",
       "titulo": "Asistente técnico en proyectos rurales",
       "carreraSugerida": "Licenciatura en Administración Rural",
       "areaSector": "Agronegocios / Rural",
@@ -172,40 +167,6 @@
       "estado": "oferta",
       "fechaCreacion": "2025-06-20T09:50:00.000Z",
       "postulaciones": []
-    }
-  ],
-  "refreshTokens": [
-    {
-      "tokenHash": "453b5d2637c420b1f18896b6c2010586c3ee93e2c7259e2831926df435736aec",
-      "userId": "1747875629015",
-      "role": "estudiante",
-      "createdAt": "2025-08-29T14:43:36.596Z",
-      "expiresAt": "2025-09-05T14:43:36.596Z",
-      "isActive": true
-    },
-    {
-      "tokenHash": "b5f5c54a0ff731300f5779ad64936a70ec52928d1f96303e3acd7d20ca03c761",
-      "userId": "1747875629015",
-      "role": "estudiante",
-      "createdAt": "2025-09-01T21:41:12.219Z",
-      "expiresAt": "2025-09-08T21:41:12.219Z",
-      "isActive": true
-    },
-    {
-      "tokenHash": "b3c51a2b973d7c3b96daac97069c19967f0782b794c732d42981aeac6a9ebf04",
-      "userId": "1747960063760",
-      "role": "empresa",
-      "createdAt": "2025-09-01T21:57:34.858Z",
-      "expiresAt": "2025-09-08T21:57:34.858Z",
-      "isActive": true
-    },
-    {
-      "tokenHash": "5cb4fb8dd3a96af3ea84f783ad29635d253a5cb85717bbea004020747e7546be",
-      "userId": "1747875629015",
-      "role": "estudiante",
-      "createdAt": "2025-09-01T21:59:26.785Z",
-      "expiresAt": "2025-09-08T21:59:26.785Z",
-      "isActive": true
     }
   ]
 }

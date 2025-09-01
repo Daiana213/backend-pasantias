@@ -24,4 +24,8 @@ router.put('/cambiar-password', authenticate(['estudiante', 'empresa']), AuthCon
 router.get('/perfil-empresa', authenticate(['empresa']), AuthController.obtenerPerfilEmpresa);
 router.put('/actualizar-perfil-empresa', authenticate(['empresa']), AuthController.actualizarPerfilEmpresa);
 
+// Tokens
+router.post('/refresh-token', AuthController.refreshToken);
+router.post('/logout', authenticate(['estudiante', 'empresa']), AuthController.logout);
+
 module.exports = router;

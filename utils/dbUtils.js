@@ -14,7 +14,8 @@ const readDB = () => {
 const writeDB = (data) => {
   try {
     fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
-    console.log('Datos guardados exitosamente:', data);
+    // Log seguro sin exponer datos sensibles
+    console.log('Datos guardados exitosamente en la base de datos');
   } catch (error) {
     console.error('Error al guardar datos:', error);
     throw error;

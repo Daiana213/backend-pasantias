@@ -303,6 +303,76 @@ class PasantiasController {
       res.status(500).json({ message: 'Error al eliminar la pasantía' });
     }
   }
+
+  // Retirar oferta de pasantía (con justificación y notificación a postulantes)
+  static async retirarOferta(req, res) {
+    try {
+      const { id } = req.params;
+      const { justificacion } = req.body;
+      const empresaId = req.user.id;
+
+      if (!justificacion || !justificacion.trim()) {
+        return res.status(400).json({ message: 'La justificación es requerida para retirar la oferta' });
+      }
+
+      const dbData = readDB();
+      const pasantiaIndex = dbData.pasantias.findIndex(p => p.id === id && p.empresaId === empresaId);
+
+      if (pasantiaIndex === -1) {
+        return res.status(404).json({ message: 'Pasantía no encontrada o no autorizada' });
+      }
+
+      const pasantia = dbData.pasantias[pasantiaIndex];
+
+      // Verificar que la pasantía esté en estado que permita retirarla
+      if (pasantia.estado === 'retirada') {
+        return res.status(400).json({ message: 'La pasantía ya ha sido retirada' });
+      }
+
+      // Cambiar estado de la pasantía
+      pasantia.estado = 'retirada';
+      pasantia.fechaRetiro = new Date().toISOString();
+      pasantia.justificacionRetiro = justificacion.trim();
+
+      // Notificar a estudiantes que tenían postulaciones pendientes
+      if (pasantia.postulaciones && pasantia.postulaciones.length > 0) {
+        const estudiantes = dbData.estudiantes || [];
+        
+        for (const postulacion of pasantia.postulaciones) {
+          if (postulacion.estado === 'pendiente') {
+            const estudiante = estudiantes.find(e => e.id === postulacion.estudianteId);
+            if (estudiante) {
+              await enviarEmail(
+                estudiante.email,
+                'Oferta de pasantía retirada - Sistema de Pasantías UTN',
+                `
+                <h1>Oferta de pasantía retirada</h1>
+                <p>La empresa ha retirado la oferta de pasantía "${pasantia.titulo}" a la que te habías postulado.</p>
+                <p><strong>Justificación de la empresa:</strong></p>
+                <p style="background: #f8f9fa; padding: 1rem; border-radius: 6px; border-left: 4px solid #6c757d;">${justificacion}</p>
+                <p>Lamentamos las molestias ocasionadas. Te animamos a seguir buscando otras oportunidades en nuestro sistema.</p>
+                `
+              );
+            }
+            // Actualizar estado de la postulación
+            postulacion.estado = 'cancelada';
+            postulacion.fechaCancelacion = new Date().toISOString();
+          }
+        }
+      }
+
+      dbData.pasantias[pasantiaIndex] = pasantia;
+      writeDB(dbData);
+
+      res.json({ 
+        message: 'Oferta de pasantía retirada exitosamente', 
+        pasantia 
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Error al retirar la oferta de pasantía' });
+    }
+  }
 }
 
 module.exports = PasantiasController;

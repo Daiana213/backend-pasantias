@@ -1,7 +1,8 @@
 const { readDB, writeDB } = require('../utils/dbUtils');
 const { enviarEmail, emailTemplates, enviarEmailConPlantilla } = require('../utils/emailUtils');
-const tokenUtils = require('../utils/tokenUtils');
+const TokenUtils = require('../utils/tokenUtils');
 const ValidationUtils = require('../utils/validationUtils');
+const PasswordUtils = require('../utils/passwordUtils');
 const Estudiante = require('../models/Estudiante');
 const Empresa = require('../models/Empresa');
 
@@ -42,6 +43,12 @@ class AuthController {
         password
       });
 
+      // Hashear la contraseña antes de almacenar
+      await nuevoEstudiante.hashPassword();
+
+      if (!dbData.estudiantes) {
+        dbData.estudiantes = [];
+      }
       dbData.estudiantes.push(nuevoEstudiante);
 
       // Notificar al estudiante
@@ -59,6 +66,9 @@ class AuthController {
         `
       );
 
+      // Generar token de aprobación seguro
+      const approvalToken = TokenUtils.generateApprovalToken(nuevoEstudiante.id, 'estudiante');
+
       // Notificar al administrador
       await enviarEmail(
         CONFIG.email.user,
@@ -71,23 +81,15 @@ class AuthController {
           <li>Email: ${email}</li>
           <li>Fecha: ${new Date().toLocaleString()}</li>
         </ul>
-        <div style="margin-top: 20px; text-align: center;">
-          <a href="${API_URL}/api/auth/aprobar-registro/${nuevoEstudiante.id}?tipo=estudiante&aprobar=true" 
-             style="background-color: #4CAF50; 
-                    color: white; 
-                    padding: 12px 24px; 
-                    text-decoration: none; 
-                    border-radius: 4px; 
-                    display: inline-block;
-                    font-family: Arial, sans-serif;
-                    font-size: 16px;
-                    margin: 10px 0;">
-            Aprobar Registro
-          </a>
+        <div style="margin-top: 20px; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
+          <h3>Para aprobar este registro:</h3>
+          <p>1. Copia el siguiente token de aprobación:</p>
+          <div style="background-color: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all; margin: 10px 0;">
+            ${approvalToken}
+          </div>
+          <p>2. Ve al panel de administración y pega este token para aprobar el registro.</p>
+          <p style="color: #666; font-size: 12px;">Este token expira en 24 horas por seguridad.</p>
         </div>
-        <p style="color: #666; font-size: 14px; margin-top: 20px;">
-          Haz clic en el botón para aprobar este registro de estudiante.
-        </p>
         `
       );
 
@@ -130,6 +132,12 @@ class AuthController {
         contraseña
       });
 
+      // Hashear la contraseña antes de almacenar
+      await nuevaEmpresa.hashPassword();
+
+      if (!dbData.empresas) {
+        dbData.empresas = [];
+      }
       dbData.empresas.push(nuevaEmpresa);
 
       // Notificar a la empresa
@@ -147,6 +155,9 @@ class AuthController {
         `
       );
 
+      // Generar token de aprobación seguro
+      const approvalToken = TokenUtils.generateApprovalToken(nuevaEmpresa.id, 'empresa');
+
       // Notificar al administrador
       await enviarEmail(
         CONFIG.email.user,
@@ -160,24 +171,16 @@ class AuthController {
           <li>Contacto: ${personaContacto}</li>
           <li>Fecha: ${new Date().toLocaleString()}</li>
         </ul>
-        <div style="margin-top: 20px; text-align: center;">
-            <a href="${API_URL}/api/auth/aprobar-registro/${nuevaEmpresa.id}?tipo=empresa&aprobar=true" 
-               style="background-color: #4CAF50; 
-                      color: white; 
-                      padding: 12px 24px; 
-                      text-decoration: none; 
-                      border-radius: 4px; 
-                      display: inline-block;
-                      font-family: Arial, sans-serif;
-                      font-size: 16px;
-                      margin: 10px 0;">
-              Aprobar Registro
-            </a>
+        <div style="margin-top: 20px; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
+          <h3>Para aprobar este registro:</h3>
+          <p>1. Copia el siguiente token de aprobación:</p>
+          <div style="background-color: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all; margin: 10px 0;">
+            ${approvalToken}
           </div>
-          <p style="color: #666; font-size: 14px; margin-top: 20px;">
-            Haz clic en el botón para aprobar este registro de empresa.
-          </p>
-          `
+          <p>2. Ve al panel de administración y pega este token para aprobar el registro.</p>
+          <p style="color: #666; font-size: 12px;">Este token expira en 24 horas por seguridad.</p>
+        </div>
+        `
       );
 
       writeDB(dbData);
@@ -192,14 +195,24 @@ class AuthController {
   static async loginEstudiante(req, res) {
     try {
       const { legajo, password } = req.body;
+      
+      if (!legajo || !password) {
+        return res.status(400).json({ message: 'Legajo y contraseña son requeridos' });
+      }
+
       const dbData = readDB();
       
-      const estudiante = dbData.estudiantes.find(u => 
-        u.legajo === legajo && 
-        u.password === password
-      );
+      const estudiante = dbData.estudiantes?.find(u => u.legajo === legajo);
 
       if (!estudiante) {
+        return res.status(400).json({ message: 'Credenciales inválidas' });
+      }
+
+      // Verificar contraseña hasheada
+      const estudianteModel = new Estudiante(estudiante);
+      const isValidPassword = await estudianteModel.verifyPassword(password);
+      
+      if (!isValidPassword) {
         return res.status(400).json({ message: 'Credenciales inválidas' });
       }
 
@@ -207,9 +220,12 @@ class AuthController {
         return res.status(403).json({ message: 'Tu cuenta está pendiente de verificación' });
       }
 
-      const token = tokenUtils.generate(estudiante.id, 'estudiante');
-      estudiante.token = token;
-      writeDB(dbData);
+      // Generar tokens JWT
+      const accessToken = TokenUtils.generateAccessToken(estudiante.id, 'estudiante');
+      const { token: refreshToken, refreshTokenData } = TokenUtils.generateRefreshToken(estudiante.id, 'estudiante');
+      
+      // Almacenar refresh token
+      TokenUtils.storeRefreshToken(refreshTokenData);
 
       res.json({
         ok: true,
@@ -217,10 +233,12 @@ class AuthController {
         email: estudiante.email,
         legajo: estudiante.legajo,
         role: estudiante.role,
-        token: token
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        expiresIn: process.env.JWT_EXPIRES_IN || '15m'
       });
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error en login estudiante:', error);
       res.status(500).json({ message: 'Error al iniciar sesión' });
     }
   }
@@ -229,14 +247,24 @@ class AuthController {
   static async loginEmpresa(req, res) {
     try {
       const { correo, contraseña } = req.body;
+      
+      if (!correo || !contraseña) {
+        return res.status(400).json({ message: 'Correo y contraseña son requeridos' });
+      }
+
       const dbData = readDB();
       
-      const empresa = dbData.empresas.find(u => 
-        u.correo === correo && 
-        u.contraseña === contraseña
-      );
+      const empresa = dbData.empresas?.find(u => u.correo === correo);
 
       if (!empresa) {
+        return res.status(400).json({ message: 'Credenciales inválidas' });
+      }
+
+      // Verificar contraseña hasheada
+      const empresaModel = new Empresa(empresa);
+      const isValidPassword = await empresaModel.verifyPassword(contraseña);
+      
+      if (!isValidPassword) {
         return res.status(400).json({ message: 'Credenciales inválidas' });
       }
 
@@ -244,19 +272,25 @@ class AuthController {
         return res.status(403).json({ message: 'Tu cuenta está pendiente de verificación' });
       }
 
-      const token = tokenUtils.generate(empresa.id, 'empresa');
-      empresa.token = token;
-      writeDB(dbData);
+      // Generar tokens JWT
+      const accessToken = TokenUtils.generateAccessToken(empresa.id, 'empresa');
+      const { token: refreshToken, refreshTokenData } = TokenUtils.generateRefreshToken(empresa.id, 'empresa');
+      
+      // Almacenar refresh token
+      TokenUtils.storeRefreshToken(refreshTokenData);
 
       res.json({
         ok: true,
         id: empresa.id,
         correo: empresa.correo,
+        nombre: empresa.nombre,
         role: empresa.role,
-        token: token
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        expiresIn: process.env.JWT_EXPIRES_IN || '15m'
       });
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error en login empresa:', error);
       res.status(500).json({ message: 'Error al iniciar sesión' });
     }
   }
@@ -335,7 +369,7 @@ class AuthController {
   // Obtener perfil de estudiante
   static async obtenerPerfilEstudiante(req, res) {
     try {
-      const { userId } = req.user;
+      const { id: userId } = req.user; // tomar id del usuario autenticado
       const dbData = readDB();
       
       const estudiante = dbData.estudiantes.find(e => e.id === userId);
@@ -359,7 +393,7 @@ class AuthController {
   // Actualizar perfil de estudiante
   static async actualizarPerfilEstudiante(req, res) {
     try {
-      const { userId } = req.user;
+      const { id: userId } = req.user; // tomar id del usuario autenticado
       const dbData = readDB();
       
       const estudianteIndex = dbData.estudiantes.findIndex(e => e.id === userId);
@@ -367,21 +401,21 @@ class AuthController {
         return res.status(404).json({ message: 'Estudiante no encontrado' });
       }
 
-      // Actualizar solo los campos permitidos
+      // Filtrar y actualizar solo los campos permitidos para evitar modificaciones no deseadas
       const camposPermitidos = [
         'nombre', 'apellido', 'telefono', 'carrera', 'añoIngreso',
         'materias_aprobadas', 'promedio', 'experienciaLaboral',
         'habilidades', 'linkedin', 'github', 'cv_url'
       ];
 
-      const datosActualizados = {};
-      camposPermitidos.forEach(campo => {
-        if (req.body[campo] !== undefined) {
-          datosActualizados[campo] = req.body[campo];
-        }
-      });
+      const datosActualizados = Object.keys(req.body)
+        .filter(key => camposPermitidos.includes(key))
+        .reduce((obj, key) => {
+          obj[key] = req.body[key];
+          return obj;
+        }, {});
 
-      // Actualizar estudiante
+      // Fusionar los datos actualizados con los existentes
       dbData.estudiantes[estudianteIndex] = {
         ...dbData.estudiantes[estudianteIndex],
         ...datosActualizados,
@@ -392,7 +426,7 @@ class AuthController {
       
       const estudianteActualizado = { 
         ...dbData.estudiantes[estudianteIndex],
-        password: undefined 
+        password: undefined // Nunca retornar el password
       };
       
       res.json(estudianteActualizado);
@@ -405,7 +439,7 @@ class AuthController {
   // Obtener perfil de empresa
   static async obtenerPerfilEmpresa(req, res) {
     try {
-      const { userId } = req.user;
+      const { id: userId } = req.user; // tomar id del usuario autenticado
       const dbData = readDB();
       
       const empresa = dbData.empresas.find(e => e.id === userId);
@@ -429,7 +463,7 @@ class AuthController {
   // Actualizar perfil de empresa
   static async actualizarPerfilEmpresa(req, res) {
     try {
-      const { userId } = req.user;
+      const { id: userId } = req.user; // tomar id del usuario autenticado
       const dbData = readDB();
       
       const empresaIndex = dbData.empresas.findIndex(e => e.id === userId);
@@ -437,20 +471,20 @@ class AuthController {
         return res.status(404).json({ message: 'Empresa no encontrada' });
       }
 
-      // Actualizar solo los campos permitidos
+      // Filtrar y actualizar solo los campos permitidos
       const camposPermitidos = [
         'nombre', 'personaContacto', 'telefono', 'direccion',
         'descripcion', 'sitioWeb', 'sector', 'tamaño'
       ];
 
-      const datosActualizados = {};
-      camposPermitidos.forEach(campo => {
-        if (req.body[campo] !== undefined) {
-          datosActualizados[campo] = req.body[campo];
-        }
-      });
+      const datosActualizados = Object.keys(req.body)
+        .filter(key => camposPermitidos.includes(key))
+        .reduce((obj, key) => {
+          obj[key] = req.body[key];
+          return obj;
+        }, {});
 
-      // Actualizar empresa
+      // Fusionar los datos actualizados con los existentes
       dbData.empresas[empresaIndex] = {
         ...dbData.empresas[empresaIndex],
         ...datosActualizados,
@@ -461,7 +495,7 @@ class AuthController {
       
       const empresaActualizada = { 
         ...dbData.empresas[empresaIndex],
-        contraseña: undefined 
+        contraseña: undefined // Nunca retornar la contraseña
       };
       
       res.json(empresaActualizada);
@@ -474,7 +508,8 @@ class AuthController {
   // Actualizar configuraciones (estudiantes y empresas)
   static async actualizarConfiguraciones(req, res) {
     try {
-      const { userId, userType } = req.user;
+      const { id: userId } = req.user; // id del usuario autenticado
+      const userType = req.role; // rol provisto por el middleware
       const { configuraciones } = req.body;
       const dbData = readDB();
       
@@ -508,21 +543,97 @@ class AuthController {
     }
   }
 
+  // Refresh Token - renovar token de acceso
+  static async refreshToken(req, res) {
+    try {
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        return res.status(400).json({ message: 'Refresh token es requerido' });
+      }
+
+      const tokenData = TokenUtils.verifyRefreshToken(refreshToken);
+      
+      if (!tokenData) {
+        return res.status(401).json({ message: 'Refresh token inválido o expirado' });
+      }
+
+      // Generar nuevo access token
+      const newAccessToken = TokenUtils.generateAccessToken(tokenData.userId, tokenData.role);
+      
+      // Generar nuevo refresh token y revocar el anterior
+      const { token: newRefreshToken, refreshTokenData } = TokenUtils.generateRefreshToken(tokenData.userId, tokenData.role);
+      
+      // Revocar el refresh token anterior
+      TokenUtils.revokeRefreshToken(refreshToken);
+      
+      // Almacenar nuevo refresh token
+      TokenUtils.storeRefreshToken(refreshTokenData);
+
+      res.json({
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expiresIn: process.env.JWT_EXPIRES_IN || '15m'
+      });
+    } catch (error) {
+      console.error('Error al renovar token:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  }
+
+  // Logout - cerrar sesión y revocar tokens
+  static async logout(req, res) {
+    try {
+      const { refreshToken } = req.body;
+      const { id: userId, role } = req.user;
+      
+      if (refreshToken) {
+        // Revocar refresh token específico
+        TokenUtils.revokeRefreshToken(refreshToken);
+      } else {
+        // Revocar todos los tokens del usuario
+        TokenUtils.revokeAllUserTokens(userId, role);
+      }
+
+      res.json({ message: 'Sesión cerrada correctamente' });
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  }
+
   // Cambiar contraseña
   static async cambiarPassword(req, res) {
     try {
-      const { userId, userType } = req.user;
+      const { id: userId } = req.user; // id del usuario autenticado
+      const userType = req.role; // rol provisto por el middleware
       const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Contraseña actual y nueva contraseña son requeridas' });
+      }
+
+      // Validar nueva contraseña
+      const passwordValidation = PasswordUtils.validatePasswordStrength(newPassword);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          message: 'La nueva contraseña no cumple con los requisitos de seguridad', 
+          errors: passwordValidation.errors 
+        });
+      }
+
       const dbData = readDB();
       
-      let usuario, usuarioIndex;
+      let usuario, usuarioIndex, userModel;
       
       if (userType === 'estudiante') {
         usuarioIndex = dbData.estudiantes.findIndex(e => e.id === userId);
         usuario = dbData.estudiantes[usuarioIndex];
+        userModel = new Estudiante(usuario);
       } else if (userType === 'empresa') {
         usuarioIndex = dbData.empresas.findIndex(e => e.id === userId);
         usuario = dbData.empresas[usuarioIndex];
+        userModel = new Empresa(usuario);
       }
 
       if (!usuario) {
@@ -530,25 +641,29 @@ class AuthController {
       }
 
       // Verificar contraseña actual
-      const currentPasswordField = userType === 'empresa' ? 'contraseña' : 'password';
-      if (usuario[currentPasswordField] !== currentPassword) {
+      const isCurrentPasswordValid = await userModel.verifyPassword(currentPassword);
+      if (!isCurrentPasswordValid) {
         return res.status(400).json({ message: 'Contraseña actual incorrecta' });
       }
 
-      // Validar nueva contraseña
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
-      }
+      // Hashear nueva contraseña
+      const newHashedPassword = await PasswordUtils.hashPassword(newPassword);
 
       // Actualizar contraseña
       if (userType === 'estudiante') {
-        dbData.estudiantes[usuarioIndex].password = newPassword;
+        dbData.estudiantes[usuarioIndex].password = newHashedPassword;
       } else {
-        dbData.empresas[usuarioIndex].contraseña = newPassword;
+        dbData.empresas[usuarioIndex].contraseña = newHashedPassword;
       }
 
+      // Revocar todos los tokens del usuario para forzar nuevo login
+      TokenUtils.revokeAllUserTokens(userId, userType);
+
       writeDB(dbData);
-      res.json({ message: 'Contraseña cambiada correctamente' });
+      res.json({ 
+        message: 'Contraseña cambiada correctamente. Debes iniciar sesión nuevamente.',
+        requireReauth: true
+      });
     } catch (error) {
       console.error('Error al cambiar contraseña:', error);
       res.status(500).json({ message: 'Error interno del servidor' });

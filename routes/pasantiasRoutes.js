@@ -16,13 +16,14 @@ router.get('/empresa/mis-pasantias', authenticate(['empresa']), PasantiasControl
 router.get('/:id', PasantiasController.obtenerPasantiaPorId);
 router.put('/:id', authenticate(['empresa']), PasantiasController.actualizarPasantia);
 router.delete('/:id', authenticate(['empresa']), PasantiasController.eliminarPasantia);
+router.post('/:id/retirar', authenticate(['empresa']), PasantiasController.retirarOferta);
 
 // Rutas para gestionar postulaciones (empresas)
-router.post('/:pasantiaId/postulaciones/:estudianteId/aceptar', 
+router.put('/:pasantiaId/aceptar/:estudianteId', 
   authenticate(['empresa']), 
   PostulacionesController.aceptarPostulacion
 );
-router.post('/:pasantiaId/postulaciones/:estudianteId/rechazar', 
+router.put('/:pasantiaId/rechazar/:estudianteId', 
   authenticate(['empresa']), 
   PostulacionesController.rechazarPostulacion
 );

@@ -10,6 +10,6 @@ router.delete('/:pasantiaId', authenticate(['estudiante']), PostulacionesControl
 
 // Rutas para empresas
 router.get('/empresa', authenticate(['empresa']), PostulacionesController.obtenerPostulacionesEmpresa);
-router.get('/empresa/postulaciones', authenticate(['empresa']), PostulacionesController.obtenerPostulacionesEmpresa);
+router.get('/empresa/resumen', authenticate(['empresa']), PostulacionesController.obtenerPostulacionesResumen);
 
 module.exports = router;
